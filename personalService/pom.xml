@@ -156,6 +156,12 @@
 			<artifactId>poi</artifactId>
 			<version>3.9</version>
 		</dependency>
+		<!-- http://mvnrepository.com/artifact/com.qcloud/qcloud-sdk -->
+		<dependency>
+			<groupId>com.qcloud</groupId>
+			<artifactId>qcloud-sdk</artifactId>
+			<version>2.1.4</version>
+		</dependency>
 	</dependencies>
 
 	<build>
