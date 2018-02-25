@@ -11,7 +11,7 @@ import javax.validation.constraints.NotNull;
 
 @Entity
 @Indexed
-@Table(name = "picture")
+@Table(name = "loginToken")
 public class LoginToken {
     @Id
     @NotNull

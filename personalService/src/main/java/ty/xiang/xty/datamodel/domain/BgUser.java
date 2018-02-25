@@ -11,7 +11,7 @@ import javax.validation.constraints.NotNull;
 
 @Entity
 @Indexed
-@Table(name = "bg-user")
+@Table(name = "bg_user")
 public class BgUser {
     @Id
     @NotNull
