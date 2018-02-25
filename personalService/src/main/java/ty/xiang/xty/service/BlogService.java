@@ -1,6 +1,5 @@
 package ty.xiang.xty.service;
 
-
 import com.qcloud.PicCloud;
 import com.qcloud.UploadResult;
 import org.springframework.beans.factory.annotation.Autowired;

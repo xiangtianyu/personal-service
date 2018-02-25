@@ -1,6 +1,5 @@
 package ty.xiang.xty.controller;
 
-
 import org.apache.commons.codec.binary.Base64;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -45,7 +44,7 @@ public class BlogController {
         }
     }
 
-    @RequestMapping(value = "/restaurant/uploadCFrontImage", method = RequestMethod.POST)
+    @RequestMapping(value = "/blog/uploadBlogImage", method = RequestMethod.POST)
     public @ResponseBody ResultDTO uploadBlogImage(@RequestBody UploadImageParameter uploadImageParameter) {
         try {
 
