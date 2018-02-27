@@ -4,12 +4,13 @@ import com.qcloud.PicCloud;
 import com.qcloud.UploadResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import ty.xiang.xty.datamodel.dao.PictureDAO;
-import ty.xiang.xty.datamodel.dao.XtagDAO;
-import ty.xiang.xty.datamodel.domain.Picture;
-import ty.xiang.xty.datamodel.domain.Xtag;
+import org.springframework.transaction.annotation.Transactional;
+import ty.xiang.xty.datamodel.dao.*;
+import ty.xiang.xty.datamodel.domain.*;
+import ty.xiang.xty.datamodel.dto.BlogDTO;
 import ty.xiang.xty.datamodel.dto.ResultDTO;
 import ty.xiang.xty.datamodel.dto.XtagDTO;
+import ty.xiang.xty.datamodel.parameter.UploadBlogParameter;
 import ty.xiang.xty.util.Constrain;
 
 import java.io.InputStream;
@@ -20,10 +21,19 @@ import java.util.stream.Collectors;
 @Service
 public class BlogService {
     @Autowired
-    private XtagDAO     xtagDAO;
+    private XtagDAO         xtagDAO;
 
     @Autowired
-    private PictureDAO  pictureDAO;
+    private PictureDAO      pictureDAO;
+
+    @Autowired
+    private BlogContentDAO  blogContentDAO;
+
+    @Autowired
+    private BlogInfoDAO     blogInfoDAO;
+
+    @Autowired
+    private XtagInBlogDAO   xtagInBlogDAO;
 
     private boolean stringnotempty (String str) {
         return !((str == null) || str.trim().length() == 0);
@@ -116,5 +126,160 @@ public class BlogService {
         picture.setPictureType(picType);
         picture.setValid(1);
         pictureDAO.save(picture);
+    }
+
+    @Transactional
+    public ResultDTO addBlog (UploadBlogParameter uploadBlogParameter) {
+        ResultDTO resultDTO = new ResultDTO();
+        BlogInfo blogInfo = new BlogInfo();
+        BlogContent blogContent = new BlogContent();
+        XtagInBlog xtagInBlog = new XtagInBlog();
+        List<XtagInBlog> xtagInBlogList = new ArrayList<>();
+
+        blogInfo.setAuthor(uploadBlogParameter.getAuthor());
+        blogInfo.setBody(uploadBlogParameter.getBody());
+        blogInfo.setTitle(uploadBlogParameter.getTitle());
+        blogInfo.setDate(uploadBlogParameter.getDate());
+        blogInfo.setValid(1);
+        blogInfoDAO.save(blogInfo);
+
+        for (int tag : uploadBlogParameter.getTagList()) {
+            xtagInBlog.setBid(blogInfo.getBid());
+            xtagInBlog.setTid(tag);
+            xtagInBlog.setValid(1);
+            xtagInBlogList.add(xtagInBlog);
+        }
+
+        xtagInBlogDAO.save(xtagInBlogList);
+
+        blogContent.setBid(blogInfo.getBid());
+        blogContent.setContent(uploadBlogParameter.getContent());
+        blogContentDAO.save(blogContent);
+        resultDTO.setResult(1);
+        resultDTO.setMessage("添加成功");
+
+        return resultDTO;
+    }
+
+    @Transactional
+    public ResultDTO editBlog (UploadBlogParameter uploadBlogParameter) {
+        ResultDTO resultDTO = new ResultDTO();
+        BlogInfo blogInfo = blogInfoDAO.findByBidAndValid(uploadBlogParameter.getBid(), 1);
+        BlogContent blogContent = blogContentDAO.findByBid(uploadBlogParameter.getBid());
+
+        if (blogContent == null || blogInfo == null) {
+            resultDTO.setResult(0);
+            resultDTO.setMessage("文章不存在");
+            return resultDTO;
+        }
+
+        XtagInBlog xtagInBlog = new XtagInBlog();
+        List<XtagInBlog> xtagInBlogList = new ArrayList<>();
+
+        blogInfo.setAuthor(uploadBlogParameter.getAuthor());
+        blogInfo.setBody(uploadBlogParameter.getBody());
+        blogInfo.setTitle(uploadBlogParameter.getTitle());
+        blogInfo.setDate(uploadBlogParameter.getDate());
+        blogInfo.setValid(1);
+        blogInfoDAO.save(blogInfo);
+
+        List <XtagInBlog> xtagInBlogs = xtagInBlogDAO.findByBidAndValid(blogInfo.getBid(), 1);
+
+        for (XtagInBlog x : xtagInBlogs) {
+            x.setValid(0);
+            xtagInBlogDAO.save(x);
+        }
+
+        for (int tag : uploadBlogParameter.getTagList()) {
+            xtagInBlog.setBid(blogInfo.getBid());
+            xtagInBlog.setTid(tag);
+            xtagInBlog.setValid(1);
+            xtagInBlogList.add(xtagInBlog);
+        }
+
+        xtagInBlogDAO.save(xtagInBlogList);
+
+        blogContent.setContent(uploadBlogParameter.getContent());
+        blogContentDAO.save(blogContent);
+        resultDTO.setResult(1);
+        resultDTO.setMessage("添加成功");
+
+        return resultDTO;
+    }
+
+    public ResultDTO deleteBlog (int bid) {
+        ResultDTO resultDTO = new ResultDTO();
+
+        BlogInfo blogInfo = blogInfoDAO.findByBidAndValid(bid, 1);
+
+        if (blogInfo == null) {
+            resultDTO.setResult(0);
+            resultDTO.setMessage("该文章不存在");
+        }
+        else {
+            blogInfo.setValid(0);
+            blogInfoDAO.save(blogInfo);
+            resultDTO.setResult(1);
+            resultDTO.setMessage("删除成功");
+        }
+
+        return resultDTO;
+    }
+
+    public BlogDTO getBlogByBid (int bid) {
+        BlogDTO blogDTO = new BlogDTO();
+        BlogInfo blogInfo = blogInfoDAO.findByBidAndValid(bid, 1);
+        BlogContent blogContent = blogContentDAO.findByBid(bid);
+        List<XtagInBlog> xtagInBlogs = xtagInBlogDAO.findByBidAndValid(bid, 1);
+        List<XtagDTO> xtagDTOList = new ArrayList<>();
+
+        if (blogInfo == null || blogContent == null) {
+            return blogDTO;
+        }
+
+        for (XtagInBlog x : xtagInBlogs) {
+            Xtag xtag = xtagDAO.findByTidAndValid(x.getTid(), 1);
+            if (xtag != null) {
+                xtagDTOList.add(TransXtagFromDoToDTO(xtag));
+            }
+        }
+
+        blogDTO.setBid(blogInfo.getBid());
+        blogDTO.setAuthor(blogInfo.getAuthor());
+        blogDTO.setBody(blogInfo.getBody());
+        blogDTO.setDate(blogInfo.getDate());
+        blogDTO.setTitle(blogInfo.getTitle());
+        blogDTO.setContent(blogContent.getContent());
+        blogDTO.setTagList(xtagDTOList);
+
+        return blogDTO;
+    }
+
+    public List<BlogDTO> getBlogInfoList () {
+        List<BlogDTO> blogDTOList = new ArrayList<>();
+        List<BlogInfo> blogInfoList = blogInfoDAO.findAllByValid(1);
+
+        for (BlogInfo blogInfo : blogInfoList) {
+            List<XtagInBlog> xtagInBlogs = xtagInBlogDAO.findByBidAndValid(blogInfo.getBid(), 1);
+            BlogDTO blogDTO = new BlogDTO();
+
+            List<XtagDTO> xtagDTOList = new ArrayList<>();
+
+            for (XtagInBlog x : xtagInBlogs) {
+                Xtag xtag = xtagDAO.findByTidAndValid(x.getTid(), 1);
+                if (xtag != null) {
+                    xtagDTOList.add(TransXtagFromDoToDTO(xtag));
+                }
+            }
+
+            blogDTO.setBid(blogInfo.getBid());
+            blogDTO.setAuthor(blogInfo.getAuthor());
+            blogDTO.setBody(blogInfo.getBody());
+            blogDTO.setDate(blogInfo.getDate());
+            blogDTO.setTitle(blogInfo.getTitle());
+            blogDTO.setTagList(xtagDTOList);
+        }
+
+        return blogDTOList;
     }
 }
